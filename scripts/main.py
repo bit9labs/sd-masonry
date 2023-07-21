@@ -1,5 +1,6 @@
 import gradio as gr
 import os
+import sqlite3
 from PIL import Image
 
 from modules import script_callbacks
@@ -8,17 +9,28 @@ from modules.scripts import basedir
 from modules.ui_components import ToolButton
 
 image_ext_list = [".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".svg"]
+dir_extension = basedir()
 dir_path = opts.outdir_samples or opts.outdir_txt2img_samples
-image_list = []
 items_per_page = 25
+total_images = 0
+
+# Make a connection with our sqlite database, should be created in install.py
+def get_conn():
+    return sqlite3.connect(os.path.join(dir_extension, "sqlite.db"))
 
 def set_dir_path(path):
     global dir_path
     dir_path = path
 
 def traverse_all_files(path):
-    # our return object
-    image_list = []
+    global total_images
+
+    # get our connection
+    conn = get_conn()
+    c = conn.cursor()
+
+    # Clear the table before inserting new data
+    c.execute("DELETE FROM images")
 
     for root, directories, filenames in os.walk(path):
         for filename in filenames:
@@ -28,57 +40,61 @@ def traverse_all_files(path):
                     image = Image.open(image_path)
                     width, height = image.size
                     image.close()
-                    image_list.append((image_path, width, height))
+                    
+                    # Save the image details to the database
+                    c.execute("INSERT INTO images (path, width, height) VALUES (?, ?, ?)",
+                              (image_path, width, height))
+                    
                 except (IOError, SyntaxError) as e:
                     # Skip the image if it cannot be opened or has syntax errors
                     print(f"Skipped {image_path}: {str(e)}")
 
-    return image_list
+    # refresh the total images
+    c.execute("SELECT COUNT(*) FROM images")
+    total_images = c.fetchone()[0]
+
+    # Commit changes and close the connection
+    conn.commit()
+    conn.close()
 
 def set_items_per_page(count):
     global items_per_page 
     items_per_page = int(count) if count != "All" else None
-    
-def get_images(refresh=False):
-    global image_list
-
-    # Check to see if never been scaned or forced via refresh button
-    if refresh or len(image_list) == 0:
-        image_list = traverse_all_files(dir_path)
-
-    return image_list
 
 def total_pages():
     global items_per_page
-    image_list = get_images()
-    
+    global total_images
+
     if items_per_page == None:
-        return len(image_list)
+        return 1
     
-    return (len(image_list) + int(items_per_page) - 1) // int(items_per_page)
+    return (total_images + int(items_per_page) - 1) // int(items_per_page)
 
 def get_page(page_index):
     global items_per_page
     html = ''
+    conn = get_conn()
+    c = conn.cursor()
 
     if page_index < 1 or page_index > total_pages():
         page_index = min(total_pages(), max(1, page_index))
     else:
-        images = image_list = get_images()
-        
         if items_per_page != None:
-            #coerce
-            items_per_page = int(items_per_page)
+            c.execute("SELECT path, width, height FROM images LIMIT ? OFFSET ?",
+                      (items_per_page, (page_index - 1) * items_per_page))
+        else:
+            c.execute("SELECT path, width, height FROM images")
 
-            #paginate
-            start_index = int((page_index - 1) * items_per_page)
-            end_index = int(start_index + items_per_page)
-            images = image_list[start_index:end_index]
+        images = c.fetchall()
 
         for image, width, height in images:
             html += '<a href="/file={}" class="masonry-item" itemprop="contentUrl" data-pswp-width="{}" data-pswp-height="{}">'.format(image, width, height)
             html += '<img src="/file={}" class="object-cover w-96" itemprop="thumbnail" alt="" />'.format(image)
             html += '</a>'
+
+    # Close the connection
+    conn.close()
+
     return html, page_index
 
 def first_page():
@@ -91,7 +107,7 @@ def last_page():
     return total_pages()
 
 def refresh_images(page_index):
-    get_images(True)
+    traverse_all_files(dir_path)
     return get_page(page_index)
 
 
@@ -138,7 +154,7 @@ def on_ui_tabs():
             with gr.Column(scale=2):
                 with gr.Row():
                     source = gr.Dropdown(choices=["t2i","i2i"], value="t2i", show_label=False)
-                    items_count = gr.Dropdown(choices=["All", "25", "50", "100", "250"], value="25", show_label=False)
+                    items_count = gr.Dropdown(choices=["All", "25", "50", "100", "250", "500", "1000"], value="25", show_label=False)
                     refresh = gr.Button('Refresh', size='sm')
         with gr.Row() as main_panel:
             with gr.Column():

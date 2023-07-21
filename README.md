@@ -15,4 +15,4 @@ and restart your stable-diffusion-webui, then you can see the new tab "Masonry B
 ## Recent updates
 
 ## Credit
-I was inspired by [stable-diffusion-webui-images-browser] (https://github.com/AlUlkesh/stable-diffusion-webui-images-browser/)
+I was inspired by [stable-diffusion-webui-images-browser](https://github.com/AlUlkesh/stable-diffusion-webui-images-browser/)
