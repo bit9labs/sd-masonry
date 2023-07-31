@@ -4,7 +4,7 @@ A custom image browser extension for [AUTOMATIC1111/stable-diffusion-webui](http
 
 ## Installation
 
-The extension can be installed directly from within the **Extensions** tab within the Webui.
+<!-- The extension can be installed directly from within the **Extensions** tab within the Webui. -->
 
 Manual install from within the webui directory:
 
