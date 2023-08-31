@@ -110,43 +110,18 @@ def refresh_images(page_index):
     traverse_all_files(dir_path)
     return get_page(page_index)
 
-
-# def get_image_paths():
-#     global image_paths
-#     if len(image_paths) == 0:
-#         image_list = traverse_all_files(dir_path)
-#         image_paths = [file_info[0] for file_info in image_list]
-#     return image_paths
-
-# def get_image_urls():
-#     global image_paths
-#     if len(image_paths) == 0:
-#         image_list = traverse_all_files(dir_path)
-#         image_paths = [os.path.join(basedir(), file_info[0]) for file_info in image_list]
-#     return image_paths
-
-
 def on_ui_tabs():
-    # image_paths = get_image_paths()
-
-    # for image_path in image_paths:
-    #     print(os.path.join(basedir(), image_path))
-
-    # with gr.Blocks(analytics_enabled=False) as image_browser:
-    #     with gr.Row() as main_panel:
-    #         image_gallery = gr.Gallery(value=image_paths, show_label=False, elem_id=f"txt2img_image_browser_gallery").style(grid=5)
-
-    # image_urls = get_image_urls()
+    
     with gr.Blocks(analytics_enabled=False) as image_browser:
         #get the first page but also load the images
-        html = get_page(1)
+        html = refresh_images(1)
         
         with gr.Row():
             with gr.Column():
                 with gr.Row():
                     first_page_btn = ToolButton('\u23EE')
                     prev_page_btn = ToolButton('\u23EA')
-                    page = gr.Number(value=1, visible=False, show_label=False)
+                    page = gr.Number(value=1, precision=0, visible=False, show_label=False)
                     next_page_btn = ToolButton('\u23E9')
                     last_page_btn = ToolButton('\u23ED')
             with gr.Column(scale=1):
@@ -166,9 +141,10 @@ def on_ui_tabs():
             inputs=[page],
             outputs=[masonry_gallery, page]
         ).then(
-            fn=lambda page_index: str(int(page_index)) + "/" + str(total_pages()),
+            fn=lambda page_index: str(page_index) + "/" + str(total_pages()),
             inputs=[page],
-            outputs=[page_html]
+            outputs=[page_html],
+            _js="(p) => {debounceInitHandler(); return p;}"
         )
 
         first_page_btn.click(
@@ -202,6 +178,9 @@ def on_ui_tabs():
             inputs=[page],
             outputs=[masonry_gallery, page],
             cancels=[page_change]
+        ).then(
+            fn=None,
+            _js="() => debounceInitHandler()"
         )
 
         source.change(
@@ -212,9 +191,12 @@ def on_ui_tabs():
             inputs=[page],
             outputs=[masonry_gallery]
         ).then(
-            fn=lambda page_index: str(int(page_index)) + "/" + str(total_pages()),
+            fn=lambda page_index: str(page_index) + "/" + str(total_pages()),
             inputs=[page],
-            outputs=[page_html]
+            outputs=[page_html]            
+        ).then(
+            fn=None,
+            _js="() => debounceInitHandler()"
         )
 
         refresh.click(
@@ -222,15 +204,20 @@ def on_ui_tabs():
             inputs=[page],
             outputs=[masonry_gallery]
         ).then(
-            fn=lambda page_index: str(int(page_index)) + "/" + str(total_pages()),
+            fn=lambda page_index: str(page_index) + "/" + str(total_pages()),
             inputs=[page],
             outputs=[page_html]
-        )
-        masonry_gallery.change(
+        ).then(
             fn=None,
-            _js="()=>debounceInitHandler()"
+            _js="() => debounceInitHandler()"
         )
+        
+        # masonry_gallery.change(
+        #     fn=None,
+        #     _js="() => console.log('change')"
+        # )
 
+# debounceInitHandler()
     return (image_browser, "Masonry Browser", "masonry_browser"),
 
 script_callbacks.on_ui_tabs(on_ui_tabs)
