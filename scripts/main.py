@@ -1,9 +1,9 @@
 import gradio as gr
-import os
-import sqlite3
+import os, sqlite3, re, html
 from PIL import Image
 
-from modules import script_callbacks
+from modules import script_callbacks, images
+from modules.generation_parameters_copypaste import parse_generation_parameters
 from modules.shared import opts
 from modules.scripts import basedir
 from modules.ui_components import ToolButton
@@ -13,6 +13,9 @@ dir_extension = basedir()
 dir_path = opts.outdir_samples or opts.outdir_txt2img_samples
 items_per_page = 25
 total_images = 0
+
+def dash_case(key):
+    return re.sub(r'\s+', '-', key).lower()
 
 # Make a connection with our sqlite database, should be created in install.py
 def get_conn():
@@ -39,11 +42,14 @@ def traverse_all_files(path):
                 try:
                     image = Image.open(image_path)
                     width, height = image.size
+
+                    geninfo, items = images.read_info_from_image(image)
+                                        
                     image.close()
                     
                     # Save the image details to the database
-                    c.execute("INSERT INTO images (path, width, height) VALUES (?, ?, ?)",
-                              (image_path, width, height))
+                    c.execute("INSERT INTO images (path, width, height, geninfo) VALUES (?, ?, ?, ?)",
+                              (image_path, width, height, geninfo))
                     
                 except (IOError, SyntaxError) as e:
                     # Skip the image if it cannot be opened or has syntax errors
@@ -72,38 +78,68 @@ def total_pages():
 
 def get_page(page_index):
     global items_per_page
-    html = ''
+    res = ''
     conn = get_conn()
     c = conn.cursor()
 
-    if page_index < 1 or page_index > total_pages():
-        page_index = min(total_pages(), max(1, page_index))
+    # Clamp the page index to safe values
+    page_index = min(total_pages(), max(1, page_index))
+
+    if items_per_page != None:
+        c.execute("SELECT path, width, height, geninfo FROM images LIMIT ? OFFSET ?",
+                    (items_per_page, (page_index - 1) * items_per_page))
     else:
-        if items_per_page != None:
-            c.execute("SELECT path, width, height FROM images LIMIT ? OFFSET ?",
-                      (items_per_page, (page_index - 1) * items_per_page))
-        else:
-            c.execute("SELECT path, width, height FROM images")
+        c.execute("SELECT path, width, height FROM images")
 
-        images = c.fetchall()
+    images = c.fetchall()
 
-        for image, width, height in images:
-            html += '<a href="/file={}" class="masonry-item" itemprop="contentUrl" data-pswp-width="{}" data-pswp-height="{}">'.format(image, width, height)
-            html += '<img src="/file={}" class="object-cover w-96" itemprop="thumbnail" alt="" />'.format(image)
-            html += '</a>'
+    # {
+    #     'Prompt': 'portrait of a strong woman', 
+    #     'Negative prompt': '', 
+    #     'Steps': '20', 
+    #     'Sampler': 'Euler a', 
+    #     'CFG scale': '7', 
+    #     'Seed': '1344403155', 
+    #     'Size-1': '512', 
+    #     'Size-2': '910', 
+    #     'Model hash': '31829c378d', 
+    #     'Model': '3dAnimationDiffusion_v10', 
+    #     'Version': 'v1.6.0', 
+    #     'Clip skip': '1', 
+    #     'Hires resize-1': 0, 'Hires resize-2': 0, 
+    #     'Hires sampler': 'Use same sampler', 
+    #     'Hires checkpoint': 'Use same checkpoint', 
+    #     'Hires prompt': '', 'Hires negative prompt': '', 
+    #     'RNG': 'GPU', 
+    #     'Schedule type': 'Automatic', 
+    #     'Schedule max sigma': 0, 'Schedule min sigma': 0, 
+    #     'Schedule rho': 0, 
+    #     'VAE Encoder': 'Full', 'VAE Decoder': 'Full'
+    # }
+    for image, width, height, geninfo in images:
+        parameters = parse_generation_parameters(geninfo)
+        res += '<div class="masonry-item">'
+        res += '<img src="/file={}" class="object-cover w-96" itemprop="thumbnail" alt="" />'.format(image)
+        res += '<div class="image-info" '
+        res += ' '.join(['data-{}="{}"'.format(
+                dash_case(key), 
+                html.escape(f'{value}')
+            ) for key, value in parameters.items()])
+        res += '></div>'
+        res += '</div>'
 
     # Close the connection
     conn.close()
 
-    return html, page_index
+    return res, page_index
 
-def first_page():
+def first_page(): # <<
     return 1
-def prev_page(page_index):
+def prev_page(page_index): # <
     return max(page_index - 1, 1)
-def next_page(page_index):
+def next_page(page_index): # >
     return min(page_index + 1, total_pages())
-def last_page():
+def last_page(): # >>
     return total_pages()
 
 def refresh_images(page_index):
@@ -119,11 +155,11 @@ def on_ui_tabs():
         with gr.Row():
             with gr.Column():
                 with gr.Row():
-                    first_page_btn = ToolButton('\u23EE')
-                    prev_page_btn = ToolButton('\u23EA')
+                    first_page_btn = ToolButton('\u23EE', elem_classes=["sd-masonry", "first"])
+                    prev_page_btn = ToolButton('\u23EA', elem_classes=["sd-masonry", "previous"])
                     page = gr.Number(value=1, precision=0, visible=False, show_label=False)
-                    next_page_btn = ToolButton('\u23E9')
-                    last_page_btn = ToolButton('\u23ED')
+                    next_page_btn = ToolButton('\u23E9', elem_classes=["sd-masonry", "next"])
+                    last_page_btn = ToolButton('\u23ED', elem_classes=["sd-masonry", "last"])
             with gr.Column(scale=1):
                 page_html = gr.HTML("1/" + str(total_pages()))
             with gr.Column(scale=2):
@@ -135,6 +171,51 @@ def on_ui_tabs():
             with gr.Column():
                 gr.HTML('<div class="spinner"></div>', elem_id="loading-wheel")
                 masonry_gallery = gr.HTML(html, elem_classes="masonry-container")
+                gr.HTML('''
+                        <div class="modal" style="display:none">
+                            <div class="modal-content">
+                                <span class="close-btn">&times;</span>
+                                <div class="modal-grid">
+                                        <div class="modal-image">
+                                            <img id="modal-image" src="" alt="Modal Image">
+                                        </div>
+                        
+                                    <div class="modal-right">
+                                        <div class="modal-info">
+                                            <div class="info-group">
+                                                <label class="info-label">Prompt:</label>
+                                                <div class="modal-prompt info-value well">Your Prompt Goes Here...</div>
+                                            </div>
+                                            <div class="info-group">
+                                                <label class="info-label">Negative Prompt:</label>
+                                                <div class="modal-neg-prompt info-value well">Your Negative Prompt Goes Here...</div>
+                                            </div>
+                                            <div class="info-group">
+                                                <label class="info-label">Model:</label>
+                                                <div class="modal-model info-value well">Your Model Goes Here...</div>
+                                            </div>
+                                            <div class="info-group">
+                                                <label class="info-label">CFG scale:</label>
+                                                <div class="modal-cfg-scale info-value well">...</div>
+                                            </div>
+                                            <div class="info-group">
+                                                <label class="info-label">Steps:</label>
+                                                <div class="modal-steps info-value well">...</div>
+                                            </div>
+                                            <div class="info-group">
+                                                <label class="info-label">Seed:</label>
+                                                <div class="modal-sampler info-value well">...</div>
+                                            </div>
+                                            <div class="info-group">
+                                                <label class="info-label">Seed:</label>
+                                                <div class="modal-seed info-value well">...</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        ''')
 
         page_change = page.change(
             fn=get_page,
@@ -179,6 +260,10 @@ def on_ui_tabs():
             outputs=[masonry_gallery, page],
             cancels=[page_change]
         ).then(
+            fn=lambda page_index: str(page_index) + "/" + str(total_pages()),
+            inputs=[page],
+            outputs=[page_html]            
+        ).then(
             fn=None,
             _js="() => debounceInitHandler()"
         )
@@ -187,9 +272,13 @@ def on_ui_tabs():
             fn=lambda source: set_dir_path(opts.outdir_txt2img_samples if source == "t2i" else opts.outdir_img2img_samples),
             inputs=[source]
         ).then(
+            lambda: 1,
+            outputs=[page]
+        ).then(
             fn=refresh_images,
             inputs=[page],
-            outputs=[masonry_gallery]
+            outputs=[masonry_gallery],
+            cancels=[page_change]
         ).then(
             fn=lambda page_index: str(page_index) + "/" + str(total_pages()),
             inputs=[page],
@@ -212,12 +301,6 @@ def on_ui_tabs():
             _js="() => debounceInitHandler()"
         )
         
-        # masonry_gallery.change(
-        #     fn=None,
-        #     _js="() => console.log('change')"
-        # )
-
-# debounceInitHandler()
     return (image_browser, "Masonry Browser", "masonry_browser"),
 
 script_callbacks.on_ui_tabs(on_ui_tabs)

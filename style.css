@@ -1,5 +1,8 @@
 /* 3 columns by default */
-.masonry-item { width: 33.333%; }
+.masonry-item { 
+  width: 33.333%; 
+  cursor: pointer;
+}
 
 @media screen and (min-width: 768px) {
   /* 5 columns for larger screens */
@@ -26,4 +29,99 @@
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* CSS to center the modal-content */
+.modal {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black background */
+  z-index: 999; /* Ensure the modal appears above other content */
+}
+
+.modal-content {
+  display: block;
+  background-color: #fff; /* White background for the modal content */
+  padding: 20px;
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  width: 80%; /* Adjust this to control the width of the modal content */
+  height: 80%; /* Adjust this to control the height of the modal content */
+  overflow: auto;
+  position: relative;
+}
+
+.modal-grid {
+  display: flex;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  overflow: clip;
+}
+
+.modal-image {
+  padding: 10px; /* Optional padding for the image */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 70%;
+}
+
+.modal-image img {
+  max-width: 100%; /* Ensure the image fits the container width */
+  max-height: 100%; /* Ensure the image fits the container height */
+  object-fit: contain;
+}
+
+.modal-right {
+  width: 30%;
+  height: 100%; /* Make modal-info the same height as its parent */
+  padding-top: 40px; /* Make room for the close btn */
+  padding-right: 20px; /* Make room for the close btn */
+}
+.modal-info {
+  height: 100%;
+  overflow: scroll;
+}
+
+/* Style for info-group */
+.info-group {
+  margin-bottom: 10px; /* Add spacing between groups */
+}
+
+/* Style for info-label */
+.info-label {
+  font-weight: bold;
+  display: block; /* Make labels take full width */
+}
+
+/* Style for info-value */
+.info-value {
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+/* Style for the "well" effect */
+.well {
+  background-color: #f7f7f7;
+}
+
+/* Style for the close button */
+.close-btn {
+  position: absolute;
+  top: 5px;
+  right: 15px;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10;
 }
