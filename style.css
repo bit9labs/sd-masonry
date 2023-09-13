@@ -46,34 +46,51 @@
 }
 
 .modal-content {
-  display: grid;
-  grid-template-columns: 75% 25%; /* 75% for the image, 25% for info */
+  display: block;
   background-color: #fff; /* White background for the modal content */
   padding: 20px;
   border-radius: 5px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  max-width: 80%; /* Adjust this to control the width of the modal content */
-  max-height: 80%; /* Adjust this to control the height of the modal content */
+  width: 80%; /* Adjust this to control the width of the modal content */
+  height: 80%; /* Adjust this to control the height of the modal content */
   overflow: auto;
   position: relative;
 }
 
+.modal-grid {
+  display: flex;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  overflow: clip;
+}
+
 .modal-image {
-  grid-column: 1; /* Left column */
   padding: 10px; /* Optional padding for the image */
   display: flex;
   justify-content: center;
   align-items: center;
+  height: 100%;
+  width: 70%;
 }
 
 .modal-image img {
   max-width: 100%; /* Ensure the image fits the container width */
   max-height: 100%; /* Ensure the image fits the container height */
+  object-fit: contain;
 }
 
+.modal-right {
+  width: 30%;
+  height: 100%; /* Make modal-info the same height as its parent */
+  padding-top: 40px; /* Make room for the close btn */
+  padding-right: 20px; /* Make room for the close btn */
+}
 .modal-info {
-  grid-column: 2; /* Right column */
-  padding: 10px; /* Optional padding for the info */
+  height: 100%;
+  overflow: scroll;
 }
 
 /* Style for info-group */
@@ -102,8 +119,9 @@
 /* Style for the close button */
 .close-btn {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 5px;
+  right: 15px;
   font-size: 24px;
   cursor: pointer;
+  z-index: 10;
 }

@@ -6,7 +6,7 @@ A custom image browser extension for [AUTOMATIC1111/stable-diffusion-webui](http
 ![Gallery View](./screenshots/gallery.png?raw=true "Gallery  View")
 
 #### Photo View
-![Photoswipe](./screenshots/photoswipe.png?raw=true "Photoswipe  View")
+![Lightbox](./screenshots/lightbox.png?raw=true "Lightbox  View")
 
 ## Installation
 

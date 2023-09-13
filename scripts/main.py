@@ -1,7 +1,5 @@
 import gradio as gr
-import os
-import sqlite3
-import re
+import os, sqlite3, re, html
 from PIL import Image
 
 from modules import script_callbacks, images
@@ -80,7 +78,7 @@ def total_pages():
 
 def get_page(page_index):
     global items_per_page
-    html = ''
+    res = ''
     conn = get_conn()
     c = conn.cursor()
 
@@ -120,17 +118,20 @@ def get_page(page_index):
     # }
     for image, width, height, geninfo in images:
         parameters = parse_generation_parameters(geninfo)
-        html += '<div class="masonry-item">'
-        html += '<img src="/file={}" class="object-cover w-96" itemprop="thumbnail" alt="" />'.format(image)
-        html += '<div class="image-info" '
-        html += ' '.join([f'data-{dash_case(key)}="{value}"' for key, value in parameters.items()])
-        html += '></div>'
-        html += '</div>'
+        res += '<div class="masonry-item">'
+        res += '<img src="/file={}" class="object-cover w-96" itemprop="thumbnail" alt="" />'.format(image)
+        res += '<div class="image-info" '
+        res += ' '.join(['data-{}="{}"'.format(
+                dash_case(key), 
+                html.escape(f'{value}')
+            ) for key, value in parameters.items()])
+        res += '></div>'
+        res += '</div>'
 
     # Close the connection
     conn.close()
 
-    return html, page_index
+    return res, page_index
 
 def first_page(): # <<
     return 1
@@ -174,37 +175,42 @@ def on_ui_tabs():
                         <div class="modal" style="display:none">
                             <div class="modal-content">
                                 <span class="close-btn">&times;</span>
-                                <div class="modal-image">
-                                    <img id="modal-image" src="" alt="Modal Image">
-                                </div>
-                                <div class="modal-info">
-                                    <div class="info-group">
-                                        <label class="info-label">Prompt:</label>
-                                        <div class="modal-prompt info-value well">Your Prompt Goes Here...</div>
-                                    </div>
-                                    <div class="info-group">
-                                        <label class="info-label">Negative Prompt:</label>
-                                        <div class="modal-neg-prompt info-value well">Your Negative Prompt Goes Here...</div>
-                                    </div>
-                                    <div class="info-group">
-                                        <label class="info-label">Model:</label>
-                                        <div class="modal-model info-value well">Your Model Goes Here...</div>
-                                    </div>
-                                    <div class="info-group">
-                                        <label class="info-label">CFG scale:</label>
-                                        <div class="modal-cfg-scale info-value well">...</div>
-                                    </div>
-                                    <div class="info-group">
-                                        <label class="info-label">Steps:</label>
-                                        <div class="modal-steps info-value well">...</div>
-                                    </div>
-                                    <div class="info-group">
-                                        <label class="info-label">Seed:</label>
-                                        <div class="modal-sampler info-value well">...</div>
-                                    </div>
-                                    <div class="info-group">
-                                        <label class="info-label">Seed:</label>
-                                        <div class="modal-seed info-value well">...</div>
+                                <div class="modal-grid">
+                                        <div class="modal-image">
+                                            <img id="modal-image" src="" alt="Modal Image">
+                                        </div>
+                        
+                                    <div class="modal-right">
+                                        <div class="modal-info">
+                                            <div class="info-group">
+                                                <label class="info-label">Prompt:</label>
+                                                <div class="modal-prompt info-value well">Your Prompt Goes Here...</div>
+                                            </div>
+                                            <div class="info-group">
+                                                <label class="info-label">Negative Prompt:</label>
+                                                <div class="modal-neg-prompt info-value well">Your Negative Prompt Goes Here...</div>
+                                            </div>
+                                            <div class="info-group">
+                                                <label class="info-label">Model:</label>
+                                                <div class="modal-model info-value well">Your Model Goes Here...</div>
+                                            </div>
+                                            <div class="info-group">
+                                                <label class="info-label">CFG scale:</label>
+                                                <div class="modal-cfg-scale info-value well">...</div>
+                                            </div>
+                                            <div class="info-group">
+                                                <label class="info-label">Steps:</label>
+                                                <div class="modal-steps info-value well">...</div>
+                                            </div>
+                                            <div class="info-group">
+                                                <label class="info-label">Seed:</label>
+                                                <div class="modal-sampler info-value well">...</div>
+                                            </div>
+                                            <div class="info-group">
+                                                <label class="info-label">Seed:</label>
+                                                <div class="modal-seed info-value well">...</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
