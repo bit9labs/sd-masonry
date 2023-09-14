@@ -117,7 +117,11 @@ def get_page(page_index):
     #     'VAE Encoder': 'Full', 'VAE Decoder': 'Full'
     # }
     for image, width, height, geninfo in images:
-        parameters = parse_generation_parameters(geninfo)
+        try: 
+            parameters = parse_generation_parameters(geninfo)
+        except Exception as e:
+            parameters = {}
+
         res += '<div class="masonry-item">'
         res += '<img src="/file={}" class="object-cover w-96" itemprop="thumbnail" alt="" />'.format(image)
         res += '<div class="image-info" '
