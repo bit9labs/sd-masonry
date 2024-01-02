@@ -270,9 +270,6 @@ def on_ui_tabs():
             fn=set_items_order,
             inputs=[items_order]
         ).then(
-            lambda: 1,
-            outputs=[page]
-        ).then(
             fn=get_page,
             inputs=[page],
             outputs=[masonry_gallery, page],
