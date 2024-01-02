@@ -83,6 +83,7 @@ def total_pages():
 
 def get_page(page_index):
     global items_per_page
+    global items_order
     res = ''
     conn = get_conn()
     c = conn.cursor()
@@ -272,9 +273,9 @@ def on_ui_tabs():
             lambda: 1,
             outputs=[page]
         ).then(
-            fn=refresh_images,
+            fn=get_page,
             inputs=[page],
-            outputs=[masonry_gallery],
+            outputs=[masonry_gallery, page],
             cancels=[page_change]
         ).then(
             fn=lambda page_index: str(page_index) + "/" + str(total_pages()),
