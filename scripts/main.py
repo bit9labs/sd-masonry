@@ -11,6 +11,7 @@ from modules.ui_components import ToolButton
 image_ext_list = [".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".svg"]
 dir_extension = basedir()
 dir_path = opts.outdir_samples or opts.outdir_txt2img_samples
+items_order = "DESC"
 items_per_page = 25
 total_images = 0
 
@@ -67,6 +68,10 @@ def set_items_per_page(count):
     global items_per_page 
     items_per_page = int(count) if count != "All" else None
 
+def set_items_order(order):
+    global items_order
+    items_order = "DESC" if order != "ASC" else "ASC"
+
 def total_pages():
     global items_per_page
     global total_images
@@ -78,6 +83,7 @@ def total_pages():
 
 def get_page(page_index):
     global items_per_page
+    global items_order
     res = ''
     conn = get_conn()
     c = conn.cursor()
@@ -86,10 +92,17 @@ def get_page(page_index):
     page_index = min(total_pages(), max(1, page_index))
 
     if items_per_page != None:
-        c.execute("SELECT path, width, height, geninfo FROM images LIMIT ? OFFSET ?",
-                    (items_per_page, (page_index - 1) * items_per_page))
+        if items_order == "ASC":
+            c.execute("SELECT path, width, height, geninfo FROM images ORDER BY path ASC LIMIT ? OFFSET ?",
+                        (items_per_page, (page_index - 1) * items_per_page))
+        else:
+            c.execute("SELECT path, width, height, geninfo FROM images ORDER BY path DESC LIMIT ? OFFSET ?",
+                        (items_per_page, (page_index - 1) * items_per_page))
     else:
-        c.execute("SELECT path, width, height FROM images")
+        if items_order == "ASC":
+            c.execute("SELECT path, width, height FROM images ORDER BY path ASC")
+        else:
+            c.execute("SELECT path, width, height FROM images ORDER BY path DESC")
 
     images = c.fetchall()
 
@@ -168,6 +181,7 @@ def on_ui_tabs():
                 page_html = gr.HTML("1/" + str(total_pages()))
             with gr.Column(scale=2):
                 with gr.Row():
+                    items_order = gr.Dropdown(choices=["ASC","DESC"], value="DESC", show_label=False)
                     source = gr.Dropdown(choices=["t2i","i2i"], value="t2i", show_label=False)
                     items_count = gr.Dropdown(choices=["All", "25", "50", "100", "250", "500", "1000"], value="25", show_label=False)
                     refresh = gr.Button('Refresh', size='sm')
@@ -250,6 +264,23 @@ def on_ui_tabs():
             fn=last_page,
             inputs=[],
             outputs=[page]
+        )
+	
+        items_order.change(
+            fn=set_items_order,
+            inputs=[items_order]
+        ).then(
+            fn=get_page,
+            inputs=[page],
+            outputs=[masonry_gallery, page],
+            cancels=[page_change]
+        ).then(
+            fn=lambda page_index: str(page_index) + "/" + str(total_pages()),
+            inputs=[page],
+            outputs=[page_html]            
+        ).then(
+            fn=None,
+            _js="() => debounceInitHandler()"
         )
 
         items_count.change(
