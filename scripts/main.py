@@ -117,8 +117,19 @@ def get_page(page_index):
     #     'VAE Encoder': 'Full', 'VAE Decoder': 'Full'
     # }
     for image, width, height, geninfo in images:
-        try: 
+        try:
+
+            #fetch model before parsing
+            model_match = re.search(r"Model:\s*([^\n,]+)", geninfo)
+            extracted_model = model_match.group(1) if model_match else None
+
             parameters = parse_generation_parameters(geninfo)
+            #due to construction of parse_generation_parameters, model that matches currently loaded one is not displayed
+
+            #so let's restore missing param
+            if "Model" not in parameters and extracted_model:
+                parameters["Model"] = extracted_model
+
         except Exception as e:
             parameters = {}
 
@@ -207,8 +218,12 @@ def on_ui_tabs():
                                                 <div class="modal-steps info-value well">...</div>
                                             </div>
                                             <div class="info-group">
-                                                <label class="info-label">Seed:</label>
+                                                <label class="info-label">Sampler:</label>
                                                 <div class="modal-sampler info-value well">...</div>
+                                            </div>
+                                            <div class="info-group">
+                                                <label class="info-label">Scheduler:</label>
+                                                <div class="modal-scheduler info-value well">...</div>
                                             </div>
                                             <div class="info-group">
                                                 <label class="info-label">Seed:</label>

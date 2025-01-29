@@ -22,6 +22,7 @@ class SDLightbox {
     let modalSeed = document.querySelector('.modal-seed');
     let modalCfgScale = document.querySelector('.modal-cfg-scale');
     let modalSampler = document.querySelector('.modal-sampler');
+    let modalScheduler = document.querySelector('.modal-scheduler');
     let modalSteps = document.querySelector('.modal-steps');
     
     // Make sure the index is within bounds
@@ -40,6 +41,7 @@ class SDLightbox {
         modalSeed.textContent = imageInfo.getAttribute('data-seed');
         modalCfgScale.textContent = imageInfo.getAttribute('data-cfg-scale');
         modalSampler.textContent = imageInfo.getAttribute('data-sampler');
+        modalScheduler.textContent = imageInfo.getAttribute('data-schedule-type');
         modalSteps.textContent = imageInfo.getAttribute('data-steps');
 
         // Update the currentIndex
